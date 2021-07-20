@@ -5,7 +5,7 @@ import axios from 'axios';
 import { useTable, usePagination } from 'react-table';
 import { CSVLink } from "react-csv";
 
-const baseURL = "https://localhost:5001";
+const baseURL = "<Base-URL>";
 
 const Styles = styled.div`
   padding: 1rem;
@@ -209,7 +209,7 @@ function App() {
   useEffect(() => {
     async function getData() {
       await axios
-        .get(`${baseURL}/Queries`)
+        .get(`${baseURL}/<Endpoint-for-queries>`)
         .then((response) => {
           setQueryData(response.data);
         });
@@ -219,7 +219,7 @@ function App() {
   useEffect(() => {
     async function postData() {
       await axios
-        .post(`${baseURL}/Executive/saved`, savedQuery)
+        .post(`${baseURL}/<Endpoint-for-savedQuery>`, savedQuery)
         .then((response) => {
           setServerData(response.data);
           setCsvData(response.data);
@@ -236,13 +236,13 @@ function App() {
       const query = {"queryId": savedQuery.queryId, "pageSize": limit, "rowOffset": skip};
       // request saved data to paginate
       await axios
-        .post(`${baseURL}/Executive/saved`, query)
+        .post(`${baseURL}/<Endpoint-for-savedQuery>`, query)
         .then((response) => {
           setSavedData(response.data);
         });
       // request csv data
       await axios
-        .post(`${baseURL}/Executive/saved`, query, {headers:headers})
+        .post(`${baseURL}/<Endpoint-for-savedQuery>`, query, {headers:headers})
         .then((response) => {
           console.log(response.data);
         });
@@ -296,7 +296,7 @@ function App() {
       setSavedQuery({"queryId": event.target.value});
       async function getName() {
         await axios
-          .get(`${baseURL}/Queries/${event.target.value}`)
+          .get(`${baseURL}/<Endpoint-for-queries>/${event.target.value}`)
           .then((response) => {
             setDownloadName(response.data.name);
           });
