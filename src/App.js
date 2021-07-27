@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useTable, usePagination } from 'react-table';
 import { CSVLink } from "react-csv";
-import "react-datepicker/dist/react-datepicker.css";
 
 const baseURL = "https://localhost:5001";
 
