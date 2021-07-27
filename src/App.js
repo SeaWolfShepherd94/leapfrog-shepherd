@@ -4,8 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useTable, usePagination } from 'react-table';
 import { CSVLink } from "react-csv";
+import "react-datepicker/dist/react-datepicker.css";
 
-const baseURL = "<Base-URL>";
+const baseURL = "https://localhost:5001";
 
 const Styles = styled.div`
   padding: 1rem;
@@ -13,6 +14,7 @@ const Styles = styled.div`
   table {
     border-spacing: 0;
     border: 1px solid black;
+    width: 100%;
 
     tr {
       :last-child {
@@ -20,6 +22,13 @@ const Styles = styled.div`
           border-bottom: 0;
         }
       }
+    }
+    thead {
+      position: -webkit-sticky;
+      position: sticky;
+      top: 0;
+      background-color: white;
+      padding: 50px;
     }
 
     th,
@@ -35,6 +44,7 @@ const Styles = styled.div`
     }
   }
 `
+const defaultPropGetter = () => ({})
 
 // Let's add a fetchData method to our Table component that will be used to fetch
 // new data when pagination state changes
@@ -45,6 +55,10 @@ function Table({
   fetchData,
   loading,
   pageCount: controlledPageCount,
+  getHeaderProps = defaultPropGetter,
+  getColumnProps = defaultPropGetter,
+  getRowProps = defaultPropGetter,
+  getCellProps = defaultPropGetter,
 }) {
   const {
     getTableProps,
@@ -54,7 +68,6 @@ function Table({
     page,
     canPreviousPage,
     canNextPage,
-    pageOptions,
     pageCount,
     gotoPage,
     nextPage,
@@ -71,6 +84,7 @@ function Table({
       // hook that we'll handle our own data fetching
       // This means we'll also have to provide our own
       // pageCount.
+
       pageCount: controlledPageCount,
     },
     usePagination
@@ -84,21 +98,6 @@ function Table({
   // Render the UI for your table
   return (
     <>
-      <pre>
-        <code>
-          {JSON.stringify(
-            {
-              pageIndex,
-              pageSize,
-              pageCount,
-              canNextPage,
-              canPreviousPage,
-            },
-            null,
-            2
-          )}
-        </code>
-      </pre>
       <table {...getTableProps()}>
         <thead>
           {headerGroups.map(headerGroup => (
@@ -122,11 +121,25 @@ function Table({
           {page.map((row, i) => {
             prepareRow(row)
             return (
-              <tr {...row.getRowProps()}>
-                {row.cells.map(cell => {
-                  return <td {...cell.getCellProps()}>{cell.render('Cell')}</td>
-                })}
-              </tr>
+              <tr {...row.getRowProps(getRowProps(row))}>
+              {row.cells.map(cell => {
+                return (
+                  <td
+                    // Return an array of prop objects and react-table will merge them appropriately
+                    {...cell.getCellProps([
+                      {
+                        className: cell.column.className,
+                        style: cell.column.style,
+                      },
+                      getColumnProps(cell.column),
+                      getCellProps(cell),
+                    ])}
+                  >
+                    {cell.render('Cell')}
+                  </td>
+                )
+              })}
+            </tr>
             )
           })}
           <tr>
@@ -162,7 +175,7 @@ function Table({
         <span>
           Page{' '}
           <strong>
-            {pageIndex + 1} of {pageOptions.length}
+            {pageIndex + 1}
           </strong>{' '}
         </span>
         <span>
@@ -195,77 +208,116 @@ function Table({
 }
  
 function App() {
+  const [pageCount, setPageCount] = useState(0);
+  const [rowCount, setRowCount] = useState(0);
   const [queryData, setQueryData] = useState([]);
+  const [queryParameters, setQueryParameters] = useState([]);
+  const [isParameter, setIsParameter] = useState(false);
+  const [isParameterChanged, setIsParameterChanged] = useState(false);
+  const [parameterValues, setParameterValues] = useState({});
   const [serverData, setServerData] = useState([]);
   const [savedData, setSavedData] = useState([]);
   const [savedQuery, setSavedQuery] = useState({});
   const [savedColumns, setSavedColumns] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [pageCount, setPageCount] = useState(0);
   const [csvData, setCsvData] = useState([]);
-  const [downloadName, setDownloadName] = useState("");
   const fetchIdRef = useRef(0);
 
   useEffect(() => {
     async function getData() {
       await axios
-        .get(`${baseURL}/<Endpoint-for-queries>`)
+        .get(`${baseURL}/Queries`)
         .then((response) => {
           setQueryData(response.data);
         });
     }
     getData();
   }, []);
-  useEffect(() => {
-    async function postData() {
-      await axios
-        .post(`${baseURL}/<Endpoint-for-savedQuery>`, savedQuery)
-        .then((response) => {
-          setServerData(response.data);
-          setCsvData(response.data);
-        });
-      }
-    postData();
-  }, [savedQuery]);
 
   const fetchAPIData = async ({ limit, skip }) => {
     try {
       const headers = {
         'Accept': 'text/csv'
       }
-      const query = {"queryId": savedQuery.queryId, "pageSize": limit, "rowOffset": skip};
+      const query = {"queryId": savedQuery.queryId, "pageSize": limit, "rowOffset": skip, "parameters": parameterValues};
       // request saved data to paginate
       await axios
-        .post(`${baseURL}/<Endpoint-for-savedQuery>`, query)
+        .post(`${baseURL}/Executive/saved`, query)
         .then((response) => {
           setSavedData(response.data);
         });
       // request csv data
       await axios
-        .post(`${baseURL}/<Endpoint-for-savedQuery>`, query, {headers:headers})
+        .post(`${baseURL}/Executive/saved`, query, {headers:headers})
         .then((response) => {
-          console.log(response.data);
+          setCsvData(response.data);
         });
     } catch (e) {
       console.log("Error while fetching", e)
     }
   }
 
-  const fetchData = React.useCallback(({ pageSize, pageIndex }) => {
-    // This will get called when the table needs new data
-    // You could fetch your data from literally anywhere,
-    // even a server. But for this example, we'll just fake it.
+  useEffect(() => {
+    if (!savedQuery.queryId) {
+      return;
+    }
+    async function getData() {
+      await axios
+        .get(`${baseURL}/Queries/${savedQuery.queryId}`)
+        .then((response) => {
+          setQueryParameters(response.data.parameters);
+          const parameters = response.data.parameters
+          const parameterNames = parameters.map((parameter) => {
+            return parameter.name;
+          });
+          const newArr = {};
+          parameterNames.map((parameterName) =>
+            newArr[parameterName] = ""
+          );
+          setParameterValues(newArr);
+        });
+    }
+    async function postData() {
+      await axios
+        .post(`${baseURL}/Executive/saved`, savedQuery)
+        .then((response) => {
+          if (response.data.length === 0) {
+            alert("Empty data response!");
+          } else {
+            setServerData(response.data);
+          }
+        })
+        .catch((error) => {
+          alert(error);
+        });
+      const queryId = savedQuery.queryId;
+      const headers = {
+        'Accept': 'ovation/rowcount+json',
+        "Content-Type": "application/json"
+      }
+      await axios
+        .post(`${baseURL}/Executive/saved`, {"queryId": queryId, "parameters": parameterValues}, {headers:headers})
+        .then((response) => {
+          setRowCount(response.data.count);
+        });
+      }
+      if (!isParameter) {
+        getData();
+      } else if (isParameter && isParameterChanged) {
+        postData();
+      }
+  }, [savedQuery,isParameter,isParameterChanged]);
 
+  const fetchData = React.useCallback(({ pageSize, pageIndex }) => {
     // Give this fetch an ID
     const fetchId = ++fetchIdRef.current
 
     // Set the loading state
     setLoading(true)
 
-    // We'll even set a delay to simulate a server here
     setTimeout(() => {
       // Only update the data if this is the latest fetch
-      if (serverData.length === 0) {
+      if (serverData.length === 0 || rowCount === 0) {
         return;
       }
       if (fetchId === fetchIdRef.current) {
@@ -273,10 +325,7 @@ function App() {
           limit: pageSize,
           skip: pageSize * pageIndex,
         })
-
-        // Your server could send back total page count.
-        // For now we'll just fake it, too
-        setPageCount(Math.ceil(serverData.length / pageSize))
+        setPageCount(Math.ceil(rowCount / pageSize));
 
         const columns = Object.keys(serverData[0]).map((key, id)=>{
           return {
@@ -289,34 +338,36 @@ function App() {
         setLoading(false)
       }
     }, 1000)
-  }, [serverData])
+  }, [serverData, rowCount])
 
   const updateQuery = (event) => {
     if (event.target.value) {
-      setSavedQuery({"queryId": event.target.value});
-      async function getName() {
-        await axios
-          .get(`${baseURL}/<Endpoint-for-queries>/${event.target.value}`)
-          .then((response) => {
-            setDownloadName(response.data.name);
-          });
+      if (isParameter) {
+        setIsParameter(false);
       }
-      getName();
+      setSavedQuery({"queryId": event.target.value,"pageSize": 10,"rowOffset": 0,"parameters": parameterValues});
     }
+  }
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    savedQuery.parameters = parameterValues;
+    setIsParameterChanged(true);
+    setIsParameter(true);
+  }
+
+  const handleChange = (index, event) => {
+    if (isParameterChanged) {
+      setIsParameterChanged(false);
+    }
+    parameterValues[event.target.name] = event.target.value;
   }
 
   return (
     <Styles>
-      <Table
-        columns={savedColumns}
-        data={savedData}
-        fetchData={fetchData}
-        loading={loading}
-        pageCount={pageCount}
-      />
       <label>
         Pick a query:
-        <select onChange={e => updateQuery(e)}>
+        <select onChange={e => updateQuery(e)} style={{ marginLeft: 5}}>
           <option key="" value="" name="">
             Select
           </option>
@@ -328,10 +379,40 @@ function App() {
         </select>
       </label>
       {
-        csvData.length > 0 ?
-          <CSVLink data={csvData} filename={`${downloadName}.csv`}>Download {downloadName}</CSVLink>
-          : null
+        queryParameters.length > 0 ?
+        <>
+        <form onSubmit={e => {handleSubmit(e)}}>
+          {queryParameters.map((queryParameter, index) => {
+            return (
+              <div key={index}>
+                <p  style={{ marginBottom: 5}}>{queryParameter.name}</p>
+                <input key={index} name={queryParameter.name} onChange={e => handleChange(index,e)} required/>
+              </div>
+            );
+          })}
+          <br/>
+          <button type="submit">Submit</button>
+        </form>
+        <br/>
+        </>
+        : null
       }
+      {
+        csvData.length > 0 ?
+        <>
+        <CSVLink data={csvData}>Export page to CSV</CSVLink>
+        <br/>
+        <br/>
+        </>
+        : null
+      }
+      <Table
+        columns={savedColumns}
+        data={savedData}
+        fetchData={fetchData}
+        loading={loading}
+        pageCount={pageCount}
+      />
     </Styles>
   )
 }
