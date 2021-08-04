@@ -4,16 +4,34 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useTable, usePagination } from 'react-table';
 import { CSVLink } from "react-csv";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import moment from 'moment';
 
 const baseURL = "https://localhost:5001";
 
 const Styles = styled.div`
   padding: 1rem;
+  display: block;
+  max-width: 100%;
+
+  .tableWrap {
+    overflow-y: auto;
+    height: 500px;
+  }
 
   table {
-    border-spacing: 0;
-    border: 1px solid black;
+    /* Make sure the inner table is always as wide as needed */
     width: 100%;
+    border-collapse: collapse;
+    border: 1px solid black;
+    border-spacing: 0;
+
+    thead {
+      position: sticky;
+      top: 0;
+      background-color: white;
+    }
 
     tr {
       :last-child {
@@ -21,13 +39,6 @@ const Styles = styled.div`
           border-bottom: 0;
         }
       }
-    }
-    thead {
-      position: -webkit-sticky;
-      position: sticky;
-      top: 0;
-      background-color: white;
-      padding: 50px;
     }
 
     th,
@@ -37,10 +48,24 @@ const Styles = styled.div`
       border-bottom: 1px solid black;
       border-right: 1px solid black;
 
+      /* The secret sauce */
+      /* Each cell should grow equally */
+      width: 1%;
+      /* But "collapsed" cells should be as small as possible */
+      &.collapse {
+        width: 0.0000000001%;
+      }
+
+      white-space: nowrap;
+
       :last-child {
         border-right: 0;
       }
     }
+  }
+
+  .pagination {
+    padding: 0.5rem;
   }
 `
 const defaultPropGetter = () => ({})
@@ -97,6 +122,7 @@ function Table({
   // Render the UI for your table
   return (
     <>
+    <div className="tableWrap">
       <table {...getTableProps()}>
         <thead>
           {headerGroups.map(headerGroup => (
@@ -153,7 +179,8 @@ function Table({
             )}
           </tr>
         </tbody>
-      </table>
+        </table>
+        </div>
       {/* 
         Pagination can be built however you'd like. 
         This is just a very basic UI implementation:
@@ -222,6 +249,10 @@ function App() {
   const [csvData, setCsvData] = useState([]);
   const fetchIdRef = useRef(0);
 
+  const initialDates = [];
+  var [dateIndex, setDateIndex] = useState(0);
+  const [dates, setDates] = useState([]);
+
   useEffect(() => {
     async function getData() {
       await axios
@@ -238,7 +269,7 @@ function App() {
       const headers = {
         'Accept': 'text/csv'
       }
-      const query = {"queryId": savedQuery.queryId, "pageSize": limit, "rowOffset": skip, "parameters": parameterValues};
+      const query = {"queryName": savedQuery.queryName, "pageSize": limit, "rowOffset": skip, "parameters": parameterValues};
       // request saved data to paginate
       await axios
         .post(`${baseURL}/Executive/saved`, query)
@@ -257,22 +288,37 @@ function App() {
   }
 
   useEffect(() => {
-    if (!savedQuery.queryId) {
+    if (!savedQuery.queryName) {
       return;
     }
     async function getData() {
       await axios
-        .get(`${baseURL}/Queries/${savedQuery.queryId}`)
+        .get(`${baseURL}/Queries/${savedQuery.queryName}`)
         .then((response) => {
           setQueryParameters(response.data.parameters);
-          const parameters = response.data.parameters
+          const parameters = response.data.parameters;
           const parameterNames = parameters.map((parameter) => {
             return parameter.name;
           });
           const newArr = {};
-          parameterNames.map((parameterName) =>
-            newArr[parameterName] = ""
-          );
+          parameters.map((parameter) => {
+            if (parameter.dataType === "date") {
+              const date = new Date();
+              newArr[parameter.name] = moment(date).format('YYYY-MM-DD');
+            } else {
+              newArr[parameter.name] = "";
+            }
+          });
+          parameters.map((parameter) => {
+            if (parameter.dataType === "date") {
+              const date = new Date();
+              setDates(dates=>([
+                ...dates,
+                date
+              ]));
+              setDateIndex(dateIndex++);
+            }
+          });
           setParameterValues(newArr);
         });
     }
@@ -289,13 +335,13 @@ function App() {
         .catch((error) => {
           alert(error);
         });
-      const queryId = savedQuery.queryId;
+      const queryName = savedQuery.queryName;
       const headers = {
         'Accept': 'ovation/rowcount+json',
         "Content-Type": "application/json"
       }
       await axios
-        .post(`${baseURL}/Executive/saved`, {"queryId": queryId, "parameters": parameterValues}, {headers:headers})
+        .post(`${baseURL}/Executive/saved`, {"queryName": queryName, "parameters": parameterValues}, {headers:headers})
         .then((response) => {
           setRowCount(response.data.count);
         });
@@ -344,7 +390,14 @@ function App() {
       if (isParameter) {
         setIsParameter(false);
       }
-      setSavedQuery({"queryId": event.target.value,"pageSize": 10,"rowOffset": 0,"parameters": parameterValues});
+      if (isParameterChanged) {
+        setIsParameterChanged(false);
+      }
+      if (dateIndex > 0) {
+        setDateIndex(0);
+        setDates([...initialDates]);
+      }
+      setSavedQuery({"queryName": event.target.value,"pageSize": 10,"rowOffset": 0,"parameters": parameterValues});
     }
   }
 
@@ -362,16 +415,28 @@ function App() {
     parameterValues[event.target.name] = event.target.value;
   }
 
+  const handleDate = (date,event,index,name) => {
+    if (isParameterChanged) {
+      setIsParameterChanged(false);
+    }
+    setDates([
+      ...dates.slice(0,index),
+      date,
+      ...dates.slice(index+1)
+    ]);
+   parameterValues[name] = moment(date).format('YYYY-MM-DD');
+  }
+
   return (
     <Styles>
       <label>
         Pick a query:
-        <select onChange={e => updateQuery(e)} style={{ marginLeft: 5}}>
+        <select onChange={e => updateQuery(e)} style={{ marginLeft: 5, marginBottom: 5}}>
           <option key="" value="" name="">
             Select
           </option>
           {queryData.map(({ name, queryId }) => (
-          <option key={queryId} value={queryId} name={name}>
+          <option key={queryId} value={name} name={name}>
             {name}
             </option>
             ))}
@@ -385,7 +450,11 @@ function App() {
             return (
               <div key={index}>
                 <p  style={{ marginBottom: 5}}>{queryParameter.name}</p>
-                <input key={index} name={queryParameter.name} onChange={e => handleChange(index,e)} required/>
+                {
+                  queryParameter.dataType === "date" && dateIndex > 0 ?
+                  <DatePicker selected={dates[index]} onChange={(date,event) => {handleDate(date,event,index,queryParameter.name)}} />
+                  : <input key={index} name={queryParameter.name} onChange={e => handleChange(index,e)} required/>
+                }
               </div>
             );
           })}
