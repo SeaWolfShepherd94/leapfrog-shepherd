@@ -1,237 +1,14 @@
 import './App.css';
-import styled from 'styled-components';
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { useTable, usePagination } from 'react-table';
 import { CSVLink } from "react-csv";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import moment from 'moment';
+import Styles from './Styles';
+import Table from './Table';
 
 const baseURL = "https://localhost:5001";
-
-const Styles = styled.div`
-  padding: 1rem;
-  display: block;
-  max-width: 100%;
-
-  .tableWrap {
-    overflow-y: auto;
-    height: 500px;
-  }
-
-  table {
-    /* Make sure the inner table is always as wide as needed */
-    width: 100%;
-    border-collapse: collapse;
-    border: 1px solid black;
-    border-spacing: 0;
-
-    thead {
-      position: sticky;
-      top: 0;
-      background-color: white;
-    }
-
-    tr {
-      :last-child {
-        td {
-          border-bottom: 0;
-        }
-      }
-    }
-
-    th,
-    td {
-      margin: 0;
-      padding: 0.5rem;
-      border-bottom: 1px solid black;
-      border-right: 1px solid black;
-
-      /* The secret sauce */
-      /* Each cell should grow equally */
-      width: 1%;
-      /* But "collapsed" cells should be as small as possible */
-      &.collapse {
-        width: 0.0000000001%;
-      }
-
-      white-space: nowrap;
-
-      :last-child {
-        border-right: 0;
-      }
-    }
-  }
-
-  .pagination {
-    padding: 0.5rem;
-  }
-`
-const defaultPropGetter = () => ({})
-
-// Let's add a fetchData method to our Table component that will be used to fetch
-// new data when pagination state changes
-// We can also add a loading state to let our table know it's loading new data
-function Table({
-  columns,
-  data,
-  fetchData,
-  loading,
-  pageCount: controlledPageCount,
-  getHeaderProps = defaultPropGetter,
-  getColumnProps = defaultPropGetter,
-  getRowProps = defaultPropGetter,
-  getCellProps = defaultPropGetter,
-}) {
-  const {
-    getTableProps,
-    getTableBodyProps,
-    headerGroups,
-    prepareRow,
-    page,
-    canPreviousPage,
-    canNextPage,
-    pageCount,
-    gotoPage,
-    nextPage,
-    previousPage,
-    setPageSize,
-    // Get the state from the instance
-    state: { pageIndex, pageSize },
-  } = useTable(
-    {
-      columns,
-      data,
-      initialState: { pageIndex: 0 }, // Pass our hoisted table state
-      manualPagination: true, // Tell the usePagination
-      // hook that we'll handle our own data fetching
-      // This means we'll also have to provide our own
-      // pageCount.
-
-      pageCount: controlledPageCount,
-    },
-    usePagination
-  )
-
-  // Listen for changes in pagination and use the state to fetch our new data
-  React.useEffect(() => {
-    fetchData({ pageIndex, pageSize })
-  }, [fetchData, pageIndex, pageSize])
-
-  // Render the UI for your table
-  return (
-    <>
-    <div className="tableWrap">
-      <table {...getTableProps()}>
-        <thead>
-          {headerGroups.map(headerGroup => (
-            <tr {...headerGroup.getHeaderGroupProps()}>
-              {headerGroup.headers.map(column => (
-                <th {...column.getHeaderProps()}>
-                  {column.render('Header')}
-                  <span>
-                    {column.isSorted
-                      ? column.isSortedDesc
-                        ? ' 🔽'
-                        : ' 🔼'
-                      : ''}
-                  </span>
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody {...getTableBodyProps()}>
-          {page.map((row, i) => {
-            prepareRow(row)
-            return (
-              <tr {...row.getRowProps(getRowProps(row))}>
-              {row.cells.map(cell => {
-                return (
-                  <td
-                    // Return an array of prop objects and react-table will merge them appropriately
-                    {...cell.getCellProps([
-                      {
-                        className: cell.column.className,
-                        style: cell.column.style,
-                      },
-                      getColumnProps(cell.column),
-                      getCellProps(cell),
-                    ])}
-                  >
-                    {cell.render('Cell')}
-                  </td>
-                )
-              })}
-            </tr>
-            )
-          })}
-          <tr>
-            {loading ? (
-              // Use our custom loading state to show a loading indicator
-              <td colSpan="10000">Loading...</td>
-            ) : (
-              <td colSpan="10000">
-                Showing {page.length} of ~{controlledPageCount * pageSize}{' '}
-                results
-              </td>
-            )}
-          </tr>
-        </tbody>
-        </table>
-        </div>
-      {/* 
-        Pagination can be built however you'd like. 
-        This is just a very basic UI implementation:
-      */}
-      <div className="pagination">
-        <button onClick={() => gotoPage(0)} disabled={!canPreviousPage}>
-          {'<<'}
-        </button>{' '}
-        <button onClick={() => previousPage()} disabled={!canPreviousPage}>
-          {'<'}
-        </button>{' '}
-        <button onClick={() => nextPage()} disabled={!canNextPage}>
-          {'>'}
-        </button>{' '}
-        <button onClick={() => gotoPage(pageCount - 1)} disabled={!canNextPage}>
-          {'>>'}
-        </button>{' '}
-        <span>
-          Page{' '}
-          <strong>
-            {pageIndex + 1}
-          </strong>{' '}
-        </span>
-        <span>
-          | Go to page:{' '}
-          <input
-            type="number"
-            defaultValue={pageIndex + 1}
-            onChange={e => {
-              const page = e.target.value ? Number(e.target.value) - 1 : 0
-              gotoPage(page)
-            }}
-            style={{ width: '100px' }}
-          />
-        </span>{' '}
-        <select
-          value={pageSize}
-          onChange={e => {
-            setPageSize(Number(e.target.value))
-          }}
-        >
-          {[10, 20, 30, 40, 50].map(pageSize => (
-            <option key={pageSize} value={pageSize}>
-              Show {pageSize}
-            </option>
-          ))}
-        </select>
-      </div>
-    </>
-  )
-}
  
 function App() {
   const [pageCount, setPageCount] = useState(0);
@@ -250,35 +27,47 @@ function App() {
   const fetchIdRef = useRef(0);
 
   const initialDates = [];
-  var [dateIndex, setDateIndex] = useState(0);
+  var [isDate, setIsDate] = useState(0);
   const [dates, setDates] = useState([]);
 
+  const [inputValue, setInputValue] = useState("");
+
+  var BEARER_TOKEN = '<Bearer-Token>';
+
   useEffect(() => {
+    const headers = {
+      'Authorization': `Bearer ${BEARER_TOKEN}`
+    }
     async function getData() {
       await axios
-        .get(`${baseURL}/Queries`)
+        .get(`${baseURL}/api/Queries`, {headers:headers})
         .then((response) => {
           setQueryData(response.data);
         });
     }
     getData();
-  }, []);
+    // eslint-disable-next-line
+  },[]);
 
   const fetchAPIData = async ({ limit, skip }) => {
     try {
+      const csvheaders = {
+        'Accept': 'text/csv',
+        'Authorization': `Bearer ${BEARER_TOKEN}`
+      }
       const headers = {
-        'Accept': 'text/csv'
+        'Authorization': `Bearer ${BEARER_TOKEN}`
       }
       const query = {"queryName": savedQuery.queryName, "pageSize": limit, "rowOffset": skip, "parameters": parameterValues};
       // request saved data to paginate
       await axios
-        .post(`${baseURL}/Executive/saved`, query)
+        .post(`${baseURL}/api/Executive/saved`, query, {headers:headers})
         .then((response) => {
           setSavedData(response.data);
         });
       // request csv data
       await axios
-        .post(`${baseURL}/Executive/saved`, query, {headers:headers})
+        .post(`${baseURL}/api/Executive/saved`, query, {headers:csvheaders})
         .then((response) => {
           setCsvData(response.data);
         });
@@ -292,16 +81,16 @@ function App() {
       return;
     }
     async function getData() {
+      const headers = {
+        'Authorization': `Bearer ${BEARER_TOKEN}`
+      }
       await axios
-        .get(`${baseURL}/Queries/${savedQuery.queryName}`)
+        .get(`${baseURL}/api/Queries/${savedQuery.queryName}`, {headers:headers})
         .then((response) => {
           setQueryParameters(response.data.parameters);
           const parameters = response.data.parameters;
-          const parameterNames = parameters.map((parameter) => {
-            return parameter.name;
-          });
           const newArr = {};
-          parameters.map((parameter) => {
+          parameters.forEach((parameter) => {
             if (parameter.dataType === "date") {
               const date = new Date();
               newArr[parameter.name] = moment(date).format('YYYY-MM-DD');
@@ -309,22 +98,25 @@ function App() {
               newArr[parameter.name] = "";
             }
           });
-          parameters.map((parameter) => {
+          parameters.forEach((parameter) => {
             if (parameter.dataType === "date") {
               const date = new Date();
               setDates(dates=>([
                 ...dates,
                 date
               ]));
-              setDateIndex(dateIndex++);
+              setIsDate(true);
             }
           });
           setParameterValues(newArr);
         });
     }
     async function postData() {
+      const headers = {
+        'Authorization': `Bearer ${BEARER_TOKEN}`
+      }
       await axios
-        .post(`${baseURL}/Executive/saved`, savedQuery)
+        .post(`${baseURL}/api/Executive/saved`, savedQuery, {headers:headers})
         .then((response) => {
           if (response.data.length === 0) {
             alert("Empty data response!");
@@ -336,12 +128,13 @@ function App() {
           alert(error);
         });
       const queryName = savedQuery.queryName;
-      const headers = {
+      const rowCountHeaders = {
         'Accept': 'ovation/rowcount+json',
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        'Authorization': `Bearer ${BEARER_TOKEN}`
       }
       await axios
-        .post(`${baseURL}/Executive/saved`, {"queryName": queryName, "parameters": parameterValues}, {headers:headers})
+        .post(`${baseURL}/api/Executive/saved`, {"queryName": queryName, "parameters": parameterValues}, {headers:rowCountHeaders})
         .then((response) => {
           setRowCount(response.data.count);
         });
@@ -351,6 +144,7 @@ function App() {
       } else if (isParameter && isParameterChanged) {
         postData();
       }
+    // eslint-disable-next-line
   }, [savedQuery,isParameter,isParameterChanged]);
 
   const fetchData = React.useCallback(({ pageSize, pageIndex }) => {
@@ -383,6 +177,7 @@ function App() {
         setLoading(false)
       }
     }, 1000)
+    // eslint-disable-next-line
   }, [serverData, rowCount])
 
   const updateQuery = (event) => {
@@ -393,9 +188,11 @@ function App() {
       if (isParameterChanged) {
         setIsParameterChanged(false);
       }
-      if (dateIndex > 0) {
-        setDateIndex(0);
+      if (isDate) {
+        setIsDate(false);
         setDates([...initialDates]);
+      } else {
+        setInputValue("");
       }
       setSavedQuery({"queryName": event.target.value,"pageSize": 10,"rowOffset": 0,"parameters": parameterValues});
     }
@@ -413,6 +210,7 @@ function App() {
       setIsParameterChanged(false);
     }
     parameterValues[event.target.name] = event.target.value;
+    setInputValue(event.target.value);
   }
 
   const handleDate = (date,event,index,name) => {
@@ -451,9 +249,9 @@ function App() {
               <div key={index}>
                 <p  style={{ marginBottom: 5}}>{queryParameter.name}</p>
                 {
-                  queryParameter.dataType === "date" && dateIndex > 0 ?
+                  queryParameter.dataType === "date" && isDate ?
                   <DatePicker selected={dates[index]} onChange={(date,event) => {handleDate(date,event,index,queryParameter.name)}} />
-                  : <input key={index} name={queryParameter.name} onChange={e => handleChange(index,e)} required/>
+                  : <input key={index} value={inputValue} name={queryParameter.name} onChange={e => handleChange(index,e)} required/>
                 }
               </div>
             );
