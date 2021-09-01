@@ -14,14 +14,18 @@ import {
   useHistory
 } from "react-router-dom";
 import { createGlobalState } from 'react-hooks-global-state';
-import "jsoneditor/dist/jsoneditor.css";
 import JSONInput from 'react-json-editor-ajrm';
 import Locale from './Locale';
 import Colors from './Colors';
+import MoreVertIcon from '@material-ui/icons/MoreVert';
+import IconButton from '@material-ui/core/IconButton';
+import Menu from '@material-ui/core/Menu';
+import MenuItem from '@material-ui/core/MenuItem';
+import Fade from '@material-ui/core/Fade';
 
 const baseURL = "https://localhost:5001";
 
-const BEARER_TOKEN = '<Bearer-Token>';
+const BEARER_TOKEN = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE2MzA1MTg1MTIsImV4cCI6MTYzMDYwNDkxMiwiaXNzIjoiTGVhcEZyb2cgQmFja2Rvb3IgSXNzdWVyIiwiYXVkIjoiaHR0cHM6Ly9sb2NhbGhvc3Q6NTAwMSIsInN1YiI6Im1hdHRAb3ZhdGlvbi5pbyIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJtYXR0QG92YXRpb24uaW8iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOlsiY3M6YWNjZXNzIiwibW9kZWw6d3JpdGUiXX0.R2vroQY7BfObJqSpZBwePIuEH1y_JslsBzPyQQPIfak';
 
 const initialState = { queryComponent: {}, requestComponent: {}, updatedParameters: false, queryData: []};
 const { useGlobalState } = createGlobalState(initialState);
@@ -482,10 +486,59 @@ function App() {
    parameterValues[name] = moment(date).format('YYYY-MM-DD');
   }
 
+  const [anchorEl, setAnchorEl] = React.useState(null);
+  const [selectedIndex, setSelectedIndex] = React.useState(0);
+  const open = Boolean(anchorEl);
+
+  const handleClick = (event: any) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleMenuItemClick = (event: any, index: number) => {
+    console.log(index);
+    handleClose();
+  }
+
+  const options = [
+    'Home',
+    'Edit',
+    'Add Query',
+  ];
 
   return (
     <Styles>
       <img alt="Ovation.io" src="https://www.ovation.io/wp-content/webpc-passthru.php?src=https://www.ovation.io/wp-content/uploads/2021/07/ovationlogo@2x.png&nocache=1"/>
+      <IconButton
+        aria-label="more"
+        aria-controls="long-menu"
+        aria-haspopup="true"
+        style={{position: 'absolute',right: 5,top: 5,}}
+        onClick={e => {handleClick(e)}}
+      >
+        <MoreVertIcon />
+      </IconButton>
+      <Menu
+        id="long-menu"
+        anchorEl={anchorEl}
+        keepMounted
+        open={open}
+        onClose={handleClose}
+        TransitionComponent={Fade}
+      >
+        {options.map((option, index) => (
+          <MenuItem
+            key={option}
+            selected={index === selectedIndex}
+            onClick={(event) => handleMenuItemClick(event, index)}
+          >
+            {option}
+          </MenuItem>
+        ))}
+      </Menu>
       <Router>
         <div>
           <ul>
