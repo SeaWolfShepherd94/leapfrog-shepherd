@@ -1,7 +1,3 @@
-import * as React from "react";
-import { render } from "react-dom";
-
-import App from "./App";
-
-const rootElement = document.getElementById("root");
-render(<App />, rootElement);
+import ReactDOM from 'react-dom';
+import { LoginHandler } from './LoginHandler';
+ReactDOM.render(<LoginHandler />, document.getElementById('root'));
