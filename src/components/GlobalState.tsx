@@ -1,13 +1,12 @@
 import { createGlobalState } from 'react-hooks-global-state';
 
 const initialState = {
-  serverData: [],
+  isServerDataSet: false,
   savedData: [],
   savedColumns: [],
   loading: false,
   csvData: [],
   pageCount: 0,
-  editorQuery: {},
   queryComponent: {},
   requestComponent: {},
   updatedParameters: false,
@@ -39,16 +38,12 @@ const initialState = {
   properties: [],
   updatePage: false,
   propertyData: [],
-  editableText: {},
-  isSorted: false,
-  isSortedDesc: false,
-  defaultOrder: '' || {},
   sortedValue: '',
-  updateView: false,
-  aggregatedColumns: [],
-  aggregatedValues: [],
   anchorEl: null,
   columnHeader: '' || {},
-  columnIndex: -1
+  columnIndex: -1,
+  columnCategory: '',
+  updateAddReport: false,
+  storedquerydto: {}
 };
 export const { useGlobalState } = createGlobalState(initialState);

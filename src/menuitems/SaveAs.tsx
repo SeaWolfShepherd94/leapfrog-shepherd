@@ -6,12 +6,19 @@ import axios from 'axios';
 import { baseURL } from './MenuItemTools';
 import { customStyles } from './MenuItemTools';
 import i18n from 'i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import Modal from 'react-modal';
+import Divider from '@mui/material/Divider';
+import IconButton from '@mui/material/IconButton';
+import CloseIcon from '@mui/icons-material/Close';
+import { useStyles } from '../hooks/useStyles';
 
 export const SaveAs: React.FC<{ props: any }> = ({ props }) => {
   const history = useHistory();
   const { getAccessTokenSilently } = useAuth0();
   const [name, setName] = useState('');
+  const classes = useStyles();
+  const { t } = useTranslation();
 
   /* eslint-disable @typescript-eslint/no-unused-vars */
   const [queryComponent, setQueryComponent]: any = useGlobalState('queryComponent');
@@ -63,8 +70,6 @@ export const SaveAs: React.FC<{ props: any }> = ({ props }) => {
     closeSaveAsModal();
   };
 
-  let saveAs: any | undefined = '';
-  saveAs = i18n.t('save-as');
   let cancel: any | undefined = '';
   cancel = i18n.t('cancel');
 
@@ -77,48 +82,88 @@ export const SaveAs: React.FC<{ props: any }> = ({ props }) => {
         contentLabel='Save Modal'
         ariaHideApp={false}
       >
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <form onSubmit={handleSaveAs}>
-            <input defaultValue='' onChange={handleChange} style={{ width: '100%' }} />
-            <br />
-            <br />
-            <input
-              type='submit'
-              style={{
-                marginRight: 5,
-                backgroundColor: '#4001FF',
-                fontFamily: 'gt_americabold, sans-serif',
-                fontSize: '18px',
-                color: '#fff',
-                border: 'none',
-                padding: '10px 45px',
-                borderRadius: '5px',
-                cursor: 'pointer'
-              }}
+        <div>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingLeft: '20px',
+              paddingRight: '20px',
+              paddingTop: '20px'
+            }}
+          >
+            <div className={classes.heading}>
+              <Trans t={t}>name-report</Trans>
+            </div>
+            <IconButton
               onClick={e => {
                 handleCloseSaveAsModal(e);
               }}
-              value={cancel}
-            />
-            <input
-              className='button'
-              type='submit'
-              style={{
-                backgroundColor: '#4001FF',
-                fontFamily: 'gt_americabold, sans-serif',
-                fontSize: '18px',
-                color: '#fff',
-                border: 'none',
-                padding: '10px 45px',
-                borderRadius: '5px',
-                cursor: 'pointer'
-              }}
-              value={saveAs}
-              onClick={e => {
-                handleSaveAs(e);
-              }}
-            />
-          </form>
+            >
+              <CloseIcon />
+            </IconButton>
+          </div>
+          <div style={{ paddingLeft: '20px', paddingRight: '20px', paddingBottom: '20px' }}>
+            <Trans t={t}>enter-your-new-report-name</Trans>:
+          </div>
+          <div>
+            <form onSubmit={handleSaveAs}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', paddingLeft: '20px', paddingRight: '20px' }}>
+                <input defaultValue='' onChange={handleChange} style={{ width: '100%' }} />
+              </div>
+              <br />
+              <Divider />
+              <br />
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  paddingLeft: '20px',
+                  paddingRight: '20px',
+                  paddingBottom: '20px'
+                }}
+              >
+                <input
+                  type='submit'
+                  style={{
+                    marginRight: 5,
+                    backgroundColor: '#4001FF',
+                    fontFamily: 'gt_americabold, sans-serif',
+                    fontSize: '18px',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '10px 10px',
+                    width: '100px',
+                    borderRadius: '5px',
+                    cursor: 'pointer'
+                  }}
+                  onClick={e => {
+                    handleCloseSaveAsModal(e);
+                  }}
+                  value={cancel}
+                />
+                <input
+                  type='submit'
+                  style={{
+                    backgroundColor: '#4001FF',
+                    fontFamily: 'gt_americabold, sans-serif',
+                    fontSize: '18px',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '10px 10px',
+                    width: '100px',
+                    borderRadius: '5px',
+                    cursor: 'pointer'
+                  }}
+                  value='OK'
+                  onClick={e => {
+                    handleSaveAs(e);
+                  }}
+                />
+              </div>
+            </form>
+          </div>
         </div>
       </Modal>
     </div>

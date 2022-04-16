@@ -16,7 +16,7 @@ export const Footer: React.FC = () => {
         onClick={e => {
           changeLanguage('en');
         }}
-        style={{ position: 'absolute', right: 150, top: 5 }}
+        style={{ position: 'absolute', right: 120, top: 15, padding: 2.5 }}
         className='IconButton'
       >
         <IconFlagUS value='en' />
@@ -25,7 +25,7 @@ export const Footer: React.FC = () => {
         onClick={e => {
           changeLanguage('es');
         }}
-        style={{ position: 'absolute', right: 100, top: 5 }}
+        style={{ position: 'absolute', right: 90, top: 15, padding: 2.5 }}
         className='IconButton'
       >
         <IconFlagES value='es' />

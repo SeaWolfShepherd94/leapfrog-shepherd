@@ -7,10 +7,17 @@ import { baseURL } from './MenuItemTools';
 import { customStyles } from './MenuItemTools';
 import i18n from 'i18next';
 import Modal from 'react-modal';
+import Divider from '@mui/material/Divider';
+import IconButton from '@mui/material/IconButton';
+import CloseIcon from '@mui/icons-material/Close';
+import { Trans, useTranslation } from 'react-i18next';
+import { useStyles } from '../hooks/useStyles';
 
 export const Save: React.FC<{ props: any; event: any }> = ({ props, event }) => {
   const history = useHistory();
   const { getAccessTokenSilently } = useAuth0();
+  const classes = useStyles();
+  const { t } = useTranslation();
 
   async function getApiToken() {
     try {
@@ -71,7 +78,27 @@ export const Save: React.FC<{ props: any; event: any }> = ({ props, event }) => 
         contentLabel='Save Modal'
         ariaHideApp={false}
       >
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '20px'
+          }}
+        >
+          <div className={classes.heading}>
+            <Trans t={t}>save-report</Trans>
+          </div>
+          <IconButton
+            onClick={(e: any) => {
+              handleCloseSaveModal(e);
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </div>
+        <Divider />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '20px' }}>
           <input
             type='submit'
             style={{

@@ -3,14 +3,34 @@ import styled from 'styled-components';
 const Styles = styled.div`
   font-family: gt_americaregular, sans-serif;
 
-  button:not(.IconButton):not(.editor-button):not(.react-datepicker button),
+  .drag-drop-zone {
+    box-shadow: 5px 5px 10px #c0c0c0;
+  }
+
+  .drag-drop-zone.inside-drag-area {
+    opacity: 0.7;
+  }
+
+  .jsoneditor{
+    height: 550px !important;
+    max-width: '100%' !important;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    height: 30px;
+    line-height: 30px;
+  }
+
+  button:not(.IconButton):not(.editor-button):not(.react-datepicker button):not(.pagination-button),
   .button {
     background-color: #4001ff;
     font-family: gt_americabold, sans-serif;
     font-size: 18px;
     color: #fff;
     border: none;
-    padding: 10px 45px;
+    padding: 10px 10px;
     border-radius: 5px;
     cursor: pointer;
   }
@@ -21,9 +41,10 @@ const Styles = styled.div`
     font-size: 18px;
     color: #fff;
     border: none;
-    padding: 10px 20px;
+    padding: 10px 10px;
     border-radius: 5px;
     cursor: pointer;
+    text-decoration: none;
   }
 
   .react-datepicker button {
@@ -36,8 +57,15 @@ const Styles = styled.div`
     display: inline-block;
   }
 
-  .pagination button {
-    padding: 10px 22px;
+  .pagination-button {
+    background-color: #fff;
+    color: #000;
+    font-family: gt_americabold, sans-serif;
+    font-size: 18px;
+    border: 1px solid #edf2f7;
+    padding: 10px 14px;
+    border-radius: 5px;
+    cursor: pointer;
   }
 
   padding: 1rem;
@@ -101,10 +129,6 @@ const Styles = styled.div`
         border-right: 0;
       }
     }
-  }
-
-  .pagination {
-    padding: 0.5rem;
   }
 `;
 

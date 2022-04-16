@@ -127,7 +127,7 @@ export default function ReportList() {
   }, []);
   return (
     <div className={classes.root}>
-      <Accordion expanded={expanded === 'panel1'} disabled classes={{ root: classes.fab, disabled: classes.disabled }}>
+      <Accordion expanded={expanded === 'panel1'} classes={{ root: classes.fab, disabled: classes.disabled }}>
         <AccordionSummary aria-controls='panel1a-content' id='panel1a-header' style={{ overflow: 'auto' }}>
           <Typography className={classes.heading}>
             <Trans t={t}>reports</Trans>

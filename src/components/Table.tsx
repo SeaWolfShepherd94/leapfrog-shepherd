@@ -1,11 +1,20 @@
 import React, { useState } from 'react';
-import { useTable, usePagination, useGroupBy, useExpanded } from 'react-table';
+import { useTable, usePagination } from 'react-table';
 import { Trans, useTranslation } from 'react-i18next';
 import i18n from 'i18next';
 import { useGlobalState } from './GlobalState';
-import { IconButton, Menu, MenuItem, Fade } from '@material-ui/core';
+import { IconButton } from '@material-ui/core';
 import MoreVertIcon from '@material-ui/icons/MoreVert';
-import { IndeterminateCheckbox, TableData } from './TableItems';
+import { TableData } from './TableItems';
+import axios from 'axios';
+import moment from 'moment';
+import { useAuth0 } from '@auth0/auth0-react';
+import { baseURL } from '../menuitems/MenuItemTools';
+import { characterizeProjection } from '@physion/leapfrog-ts-api/dist/utils';
+import { ModelDto } from '@physion/leapfrog-ts-api/dist/api';
+import { TProjectionElement } from '@physion/leapfrog-ts-api/dist/queryLanguage/projections/IProjectionElement';
+import { PropertyNameProjection } from '@physion/leapfrog-ts-api/dist/queryLanguage';
+import { isAggregation } from './DataTypes';
 
 const defaultPropGetter = () => ({});
 
@@ -18,7 +27,6 @@ export default function Table({
   fetchData,
   loading,
   pageCount: controlledPageCount,
-  getHeaderProps = defaultPropGetter,
   getColumnProps = defaultPropGetter,
   getRowProps = defaultPropGetter,
   getCellProps = defaultPropGetter
@@ -36,8 +44,6 @@ export default function Table({
     nextPage,
     previousPage,
     setPageSize,
-    allColumns,
-    getToggleHideAllColumnsProps,
     // Get the state from the instance
     state: { pageIndex, pageSize }
   } = useTable(
@@ -55,134 +61,165 @@ export default function Table({
     usePagination
   );
 
-  const [editorQuery, setEditorQuery]: any = useGlobalState('editorQuery');
   const [queryComponent, setQueryComponent]: any = useGlobalState('queryComponent');
-  const [editableText, setEditableText]: any = useGlobalState('editableText');
-  const [isSorted, setIsSorted]: any = useGlobalState('isSorted');
-  const [isSortedDesc, setIsSortedDesc]: any = useGlobalState('isSortedDesc');
-  const [defaultOrder, setDefaultOrder]: any = useGlobalState('defaultOrder');
-  const [sortedValue, setSortedValue]: any = useGlobalState('sortedValue');
-  const [updateView, setUpdateView]: any = useGlobalState('updateView');
   const [columnHeader, setColumnHeader]: any = useGlobalState('columnHeader');
   const [columnIndex, setColumnIndex]: any = useGlobalState('columnIndex');
+  const [columnCategory, setColumnCategory]: any = useGlobalState('columnCategory');
   const [anchorEl, setAnchorEl] = useGlobalState('anchorEl');
+  const { getAccessTokenSilently } = useAuth0();
+  const [propertyOptions, setPropertyOptions]: any = useState([]);
+  const [modelObject, setModelObject]: any = useState({});
+  const [storedquerydto, setStoredquerydto]: any = useGlobalState('storedquerydto');
+  const [characterization, setCharacterization]: any = useState([]);
 
-  React.useEffect(() => {
-    if (Object.keys(editableText).length === 0) {
-      return;
+  async function getApiToken() {
+    try {
+      const token = await getAccessTokenSilently();
+      return token;
+    } catch {
+      // do nothing
     }
-    setEditorQuery({ ...editorQuery, query: editableText });
-    setQueryComponent({ ...queryComponent, query: editableText });
-    // eslint-disable-next-line
-  }, [updateView]);
-
-  React.useEffect(() => {
-    if (queryComponent.query.order) {
-      setDefaultOrder(queryComponent.query.order);
-    }
-    // eslint-disable-next-line
-  }, []);
+  }
 
   // Listen for changes in pagination and use the state to fetch our new data
   React.useEffect(() => {
     fetchData({ pageIndex, pageSize });
   }, [fetchData, pageIndex, pageSize]);
 
+  const getModel = async (modelId: string): Promise<ModelDto> => {
+    try {
+      const headers = {
+        Authorization: `Bearer ${await getApiToken()}`,
+        'Access-Control-Allow-Origin': '*'
+      };
+      const { data } = await axios.get<ModelDto>(`${baseURL}/api/Models/${modelId}`, {
+        headers: headers
+      });
+      const newArr: any = [];
+      data.properties?.forEach((property: any, index: number) => {
+        const option = {
+          name: property.name,
+          dataType: property.dataType
+        };
+        newArr.push(option);
+      });
+      setPropertyOptions(newArr);
+      return data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error(error);
+      } else {
+        console.error('some other error %j', error);
+      }
+      return null as unknown as ModelDto;
+    }
+  };
+
+  React.useEffect(() => {
+    if (Object.keys(modelObject).length === 0) return;
+    storedquerydto.query.project?.forEach((p: TProjectionElement) => {
+      if (typeof p === 'string') {
+        p = new PropertyNameProjection(p);
+      }
+      if (isAggregation(p) !== 'none') p = p?.propertyNameOrAlias;
+      setCharacterization((characterization: any) => [...characterization, characterizeProjection(modelObject, p)]);
+    });
+  }, [modelObject]);
+
+  React.useEffect(() => {
+    setCharacterization([]);
+    async function getData() {
+      const headers = {
+        Authorization: `Bearer ${await getApiToken()}`,
+        'Access-Control-Allow-Origin': '*'
+      };
+      let model: any = {};
+      await axios.get(`${baseURL}/api/Models/list`, { headers: headers }).then(response => {
+        model = response.data.filter((model: any) => model.name === queryComponent.modelName);
+      });
+      setModelObject(await getModel(model[0].id));
+    }
+    getData();
+  }, [storedquerydto]);
+
   const { t } = useTranslation();
   let key = 0;
 
-  const handleSort = (value: any) => {
-    if (isSortedDesc) {
-      setIsSortedDesc(!isSortedDesc);
-      setIsSorted(!isSorted);
-      setSortedValue('');
-      if (defaultOrder !== '' && defaultOrder !== {}) {
-        setEditableText({ ...editorQuery.query, order: defaultOrder });
-      } else {
-        setEditableText({ ...editorQuery.query, order: [] });
-      }
-    } else {
-      if (isSorted) {
-        setIsSortedDesc(!isSortedDesc);
-        setEditableText({ ...editorQuery.query, order: [{ [value]: 'desc' }] });
-      } else {
-        setIsSorted(!isSorted);
-        setEditableText({ ...editorQuery.query, order: [{ [value]: 'asc' }] });
-      }
-    }
-    setEditorQuery({ ...editorQuery, query: {} });
-    setUpdateView(!updateView);
-  };
-
-  const handleClick = (value: any) => {
-    if (sortedValue === '') {
-      setSortedValue(value);
-    } else if (sortedValue !== value) {
-      setSortedValue(value);
-      setIsSorted(true);
-      setIsSortedDesc(false);
-      setEditableText({ ...editorQuery.query, order: [{ [value]: 'asc' }] });
-      setEditorQuery({ ...editorQuery, query: {} });
-      setUpdateView(!updateView);
-    } else {
-      handleSort(value);
-    }
-  };
-
-  const handleContextMenu = (event: any, value: string, index: number) => {
+  const handleContextMenu = (event: any, value: string, index: number, char: Array<string>) => {
+    let category = '';
     setAnchorEl(event.currentTarget);
     setColumnHeader(value);
     setColumnIndex(index);
+    if (value === '') return;
+    if (char.includes('aggregatable')) category = 'String';
+    if (char.includes('numberFormatable')) category = 'Number';
+    if (char.includes('booleanFormatable')) category = 'Boolean';
+    if (char.includes('instantFormatable') || char.includes('timeFormatable') || char.includes('dateFormatable'))
+      category = 'Time';
+    if (char.includes('json')) category = 'Undefined';
+    setColumnCategory(category);
+  };
+
+  const [draggedFromIndex, setDraggedFromIndex] = useState(-1);
+  const [draggedToIndex, setDraggedToIndex] = useState(-1);
+
+  const newOnDragStart = (e: any) => {
+    setDraggedFromIndex(e.currentTarget.dataset.position);
+  };
+
+  const newOnDragOver = (e: any) => {
+    e.preventDefault();
+    setDraggedToIndex(e.currentTarget.dataset.position);
+  };
+
+  const newOnDragEnd = (e: any) => {
+    e.preventDefault();
+    const temp = { ...storedquerydto, query: storedquerydto.query.deserialize() };
+    const tempColumn = temp.query.project[draggedFromIndex];
+    temp.query.project[draggedFromIndex] = temp.query.project[draggedToIndex];
+    temp.query.project[draggedToIndex] = tempColumn;
+    setQueryComponent({ ...queryComponent, query: temp.query });
   };
 
   // Render the UI for your table
   return (
     <>
       <div className='tableWrap'>
-        <div>
-          <div>
-            <IndeterminateCheckbox {...getToggleHideAllColumnsProps()} /> Toggle All
-          </div>
-          {allColumns.map((column: any) => (
-            <div key={column.id}>
-              <label>
-                <input type='checkbox' {...column.getToggleHiddenProps()} /> {column.id}
-              </label>
-            </div>
-          ))}
-          <br />
-        </div>
         <div className='child'>
           <table {...getTableProps()} className='child'>
             <thead>
               {headerGroups.map(headerGroup => (
                 <tr {...headerGroup.getHeaderGroupProps()} key={key++}>
                   {headerGroup.headers.map((column: any, index: number) => (
-                    <th {...column.getHeaderProps()} key={key++}>
-                      <span
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => {
-                          handleClick(column.render('Header'));
-                        }}
-                      >
-                        {column.render('Header')}
-                      </span>
-                      <IconButton
-                        aria-label='more'
-                        aria-controls='long-menu'
-                        aria-haspopup='true'
-                        onClick={e => {
-                          handleContextMenu(e, column.render('Header'), index);
-                        }}
-                        className='IconButton'
-                        value={column.render('Header')}
-                      >
-                        <MoreVertIcon />
-                      </IconButton>
+                    <th
+                      {...column.getHeaderProps()}
+                      key={key++}
+                      className='drag-drop-zone'
+                      draggable='true'
+                      data-position={index}
+                      onDragStart={e => newOnDragStart(e)}
+                      onDragOver={e => newOnDragOver(e)}
+                      onDragEnd={e => newOnDragEnd(e)}
+                    >
+                      <div className='header'>
+                        <span style={{ cursor: 'grab' }}>{column.render('Header')}</span>
+                        <IconButton
+                          aria-label='more'
+                          aria-controls='long-menu'
+                          aria-haspopup='true'
+                          onClick={e => {
+                            handleContextMenu(e, column.render('Header'), index, characterization[index]);
+                          }}
+                          className='IconButton'
+                          value={column.render('Header')}
+                          style={{
+                            padding: 0
+                          }}
+                        >
+                          <MoreVertIcon />
+                        </IconButton>
+                      </div>
                       <TableData />
-                      <span>
-                        {isSorted && sortedValue === column.render('Header') ? (isSortedDesc ? ' 🔽' : ' 🔼') : ''}
-                      </span>
                     </th>
                   ))}
                 </tr>
@@ -194,13 +231,31 @@ export default function Table({
                 return (
                   <tr {...row.getRowProps(getRowProps(row))} key={key++}>
                     {row.cells.map(cell => {
+                      if (Date.parse(cell.value) && isNaN(cell.value)) {
+                        const property: any = propertyOptions.filter(
+                          (property: any) => property.name === cell.column.Header
+                        );
+                        if (property.length > 0) {
+                          if (property[0].dataType === 'date') cell.value = moment(cell.value).format('YYYY-MM-DD');
+                          else if (property[0].dataType === 'dateTime' || property[0].dataType === 'timestamp') {
+                            const testDateUtc = moment.utc(cell.value);
+                            const localDate = moment(testDateUtc).local();
+                            const s = localDate.format('YYYY-MM-DD HH:mm:ss');
+                            cell.value = s;
+                          } else if (property[0].dataType === 'timeOfDay')
+                            cell.value = moment(cell.value).format('h:mm:ss');
+                        }
+                      }
+                      if (typeof cell.value == 'boolean') {
+                        cell.value = cell.value + '';
+                      }
                       return (
                         <td
                           // Return an array of prop objects and react-table will merge them appropriately
                           {...cell.getCellProps([getColumnProps(cell.column), getCellProps(cell)])}
                           key={key++}
                         >
-                          {cell.render('Cell')}
+                          {cell.value}
                         </td>
                       );
                     })}
@@ -228,17 +283,18 @@ export default function Table({
         Pagination can be built however you'd like. 
         This is just a very basic UI implementation:
       */}
-      <div className='pagination'>
-        <button onClick={() => gotoPage(0)} disabled={!canPreviousPage}>
+      <br />
+      <div>
+        <button className='pagination-button' onClick={() => gotoPage(0)} disabled={!canPreviousPage}>
           {'<<'}
         </button>{' '}
-        <button onClick={() => previousPage()} disabled={!canPreviousPage}>
+        <button className='pagination-button' onClick={() => previousPage()} disabled={!canPreviousPage}>
           {'<'}
         </button>{' '}
-        <button onClick={() => nextPage()} disabled={!canNextPage}>
+        <button className='pagination-button' onClick={() => nextPage()} disabled={!canNextPage}>
           {'>'}
         </button>{' '}
-        <button onClick={() => gotoPage(pageCount - 1)} disabled={!canNextPage}>
+        <button className='pagination-button' onClick={() => gotoPage(pageCount - 1)} disabled={!canNextPage}>
           {'>>'}
         </button>{' '}
         <span>

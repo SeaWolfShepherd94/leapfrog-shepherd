@@ -7,7 +7,11 @@ import { useGlobalState } from './GlobalState';
 import { useHistory } from 'react-router-dom';
 import i18n from 'i18next';
 import { Trans, useTranslation } from 'react-i18next';
-import Simple from './Simple';
+import { Divider } from '@material-ui/core';
+import IconButton from '@mui/material/IconButton';
+import CloseIcon from '@mui/icons-material/Close';
+import { useStyles } from '../hooks/useStyles';
+import { selectStyles } from '../menuitems/MenuItemTools';
 
 export default function SelectComponent() {
   /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -24,6 +28,8 @@ export default function SelectComponent() {
   const [baseTableName, setBaseTableName]: any = useState('');
   const [properties, setProperties]: any = useGlobalState('properties');
   const [newName, setNewName]: any = useState('');
+  const [isSelected, setIsSelected]: any = useState(false);
+  const classes = useStyles();
   const { t } = useTranslation();
   const { getAccessTokenSilently } = useAuth0();
   const [tiles, setTiles]: any = useState([]);
@@ -73,6 +79,7 @@ export default function SelectComponent() {
   }, [modelData]);
 
   function closeAddReportModal() {
+    setIsSelected(false);
     setAddReportIsOpen(false);
   }
 
@@ -83,7 +90,6 @@ export default function SelectComponent() {
     };
 
     await axios.get(`${baseURL}/api/Models/${modelId}`, { headers: headers }).then(response => {
-      console.log(response.data.properties);
       setPropertyData(response.data.properties);
       setModelId(response.data.modelId);
       setDescription(response.data.description);
@@ -93,6 +99,7 @@ export default function SelectComponent() {
   }
 
   const handleChange = (event: any) => {
+    setIsSelected(true);
     setNewName(event.value);
     getModelData(event.key);
   };
@@ -104,69 +111,94 @@ export default function SelectComponent() {
     closeAddReportModal();
   };
 
-  let submit: any | undefined = '';
-  submit = i18n.t('submit');
+  let selectLabel: any | undefined = '';
+  selectLabel = i18n.t('select-label');
   let cancel: any | undefined = '';
   cancel = i18n.t('cancel');
 
   return (
     <div style={{ width: '500px' }}>
-      {/*<Select options={modelOptions} onChange={handleChange} />
-      <br />
-      {propertyData.length > 0 ? (
-        <div>
-          <table style={{border: '1px solid black', width: '100%'}}>
-            <thead>
-              <tr>
-                <th style={{border: '1px solid black'}}>description</th>
-                <th style={{border: '1px solid black'}}>baseTableName</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style={{border: '1px solid black'}}>{description}</td>
-                <td style={{border: '1px solid black'}}>{baseTableName}</td>
-              </tr>
-            </tbody>
-          </table>
-          <br />
-          <input
-            type='submit'
-            style={{
-              marginRight: 5,
-              backgroundColor: '#4001FF',
-              fontFamily: 'gt_americabold, sans-serif',
-              fontSize: '18px',
-              color: '#fff',
-              border: 'none',
-              padding: '10px 45px',
-              borderRadius: '5px',
-              cursor: 'pointer'
-            }}
-            onClick={closeAddReportModal}
-            value={cancel}
-          />
-          <input
-            className='button'
-            type='submit'
-            style={{
-              backgroundColor: '#4001FF',
-              fontFamily: 'gt_americabold, sans-serif',
-              fontSize: '18px',
-              color: '#fff',
-              border: 'none',
-              padding: '10px 45px',
-              borderRadius: '5px',
-              cursor: 'pointer'
-            }}
-            value={submit}
-            onClick={e => {
-              handleSubmit(e);
-            }}
-          />
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingLeft: '20px',
+          paddingRight: '20px',
+          paddingTop: '20px'
+        }}
+      >
+        <div className={classes.heading}>
+          <Trans t={t}>select-model</Trans>
         </div>
-          ) : null}*/}
-      <Simple deviceType={'desktop'} />
+        <IconButton onClick={closeAddReportModal}>
+          <CloseIcon />
+        </IconButton>
+      </div>
+      <br />
+      <div style={{ paddingLeft: '20px', paddingRight: '20px' }}>
+        <Select
+          options={modelOptions}
+          onChange={handleChange}
+          defaultValue={{ label: selectLabel, value: selectLabel }}
+          menuPortalTarget={document.body}
+          styles={selectStyles}
+          menuPosition='fixed'
+        />
+      </div>
+      <br />
+      {isSelected ? (
+        <div>
+          <Divider />
+          <br />
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              paddingLeft: '20px',
+              paddingRight: '20px',
+              paddingBottom: '20px'
+            }}
+          >
+            <input
+              type='submit'
+              style={{
+                marginRight: 5,
+                backgroundColor: '#4001FF',
+                fontFamily: 'gt_americabold, sans-serif',
+                fontSize: '18px',
+                color: '#fff',
+                border: 'none',
+                padding: '10px 10px',
+                width: '100px',
+                borderRadius: '5px',
+                cursor: 'pointer'
+              }}
+              onClick={closeAddReportModal}
+              value={cancel}
+            />
+            <input
+              className='button'
+              type='submit'
+              style={{
+                backgroundColor: '#4001FF',
+                fontFamily: 'gt_americabold, sans-serif',
+                fontSize: '18px',
+                color: '#fff',
+                border: 'none',
+                padding: '10px 10px',
+                width: '100px',
+                borderRadius: '5px',
+                cursor: 'pointer'
+              }}
+              value='OK'
+              onClick={e => {
+                handleSubmit(e);
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
-import Report from './Report';
+import Report from './components/SavedReport';
 import Styles from './components/Styles';
 import Profile from './components/Profile';
 import { Home } from './menuitems/Home';
